@@ -1,0 +1,3 @@
+{:deps
+ {org.clojure/tools.namespace {:mvn/version "RELEASE"}
+  rewrite-clj                 {:mvn/version "RELEASE"}}}
