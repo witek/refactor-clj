@@ -10,17 +10,18 @@
     zipper
     (fn [requires sexpr]
       (let [[ns & {:keys [as refer]}] sexpr
-            requires                  (if as
-                                        (assoc-in requires [:aliases as] ns)
-                                        requires)
-            requires                  (reduce
-                                       (fn [requires r]
-                                         (assoc-in requires [:refers r]
-                                                   (symbol (str ns) (str r))))
-                                       requires
-                                       refer)]
+            requires (update requires :nses conj ns)
+            requires (if as
+                       (assoc-in requires [:aliases as] ns)
+                       requires)
+            requires (reduce
+                       (fn [requires r]
+                         (assoc-in requires [:refers r]
+                                   (symbol (str ns) (str r))))
+                       requires
+                       refer)]
         requires))
-    {:aliases {} :refers  {}}))
+    {:aliases {} :refers  {} :nses #{}}))
 
 
 (defn qualify-ref
@@ -72,7 +73,8 @@
                                    "(defn f4 [] (u2))\n"
                                    "(defn f5 [] (some.utl/u3))\n"))]
     (is (= {:refers {'u2 'some.utl/u2}
-            :aliases {'utl 'some.utl}}
+            :aliases {'utl 'some.utl}
+            :nses #{'some.utl}}
            (-> zipper analyze-zipper :requires)))
     (is (= #{'some.utl/u1 'some.utl/u2 'some.utl/u3}
            (-> zipper analyze-zipper :refs)))))
