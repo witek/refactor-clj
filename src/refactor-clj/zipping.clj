@@ -35,6 +35,35 @@
          (-> ":key" z/of-string extract-ns))))
 
 
+(defn- update-requires
+  [requires sexpr]
+  (println sexpr)
+  (let [[ns & {:keys [as refer]}] sexpr
+        requires (if as
+                   (assoc-in requires [:aliases as] ns)
+                   requires)
+        requires (reduce
+                  (fn [requires r]
+                    (assoc-in requires [:refers r]
+                              (symbol (str ns) (str r))))
+                  requires
+                  refer)]
+    requires))
+
+
+(defn extract-requires
+  [zipper]
+  (when-let [zipper (goto-ns-form zipper)]
+    (when-let [zipper (z/find-value zipper z/next :require)]
+      (when-let [zipper (z/next zipper)]
+        (loop [zipper zipper
+               requires {:aliases {}
+                         :refers {}}]
+          (if-not zipper
+            requires
+            (recur (z/right zipper) (update-requires requires (z/sexpr zipper)))))))))
+
+
 (defn qualify-ref
   "If `zipper` is located at a reference, return it's qualified symbol."
   [zipper
@@ -50,8 +79,7 @@
           sexpr))
 
       (and (symbol? sexpr) (contains? refers sexpr))
-      (symbol (-> refers (get sexpr) str)
-              (str sexpr))
+      (get refers sexpr)
 
       :else nil)))
 
@@ -77,9 +105,9 @@
                                  "(defn f3 [] (utl/u1))\n"
                                  "(defn f4 [] (u2))\n"
                                  "(defn f5 [] (some.utl/u3))\n"))
-        requires {:refers  {'u1 'some.utl
-                            'u2 'some.utl
-                            'u3 'some.utl}
+        requires {:refers  {'u1 'some.utl/u1
+                            'u2 'some.utl/u2
+                            'u3 'some.utl/u3}
                   :aliases {'utl `some.utl}}]
     (is (= #{'some.utl/u1 'some.utl/u2 'some.utl/u3}
            (extract-refs zipper requires)))))
@@ -90,13 +118,14 @@
   (def zipper (z/of-string ":just-a-keyword"))
   (def zipper (z/of-string (str "(ns some.core\n"
                                 "  (:require\n"
-                                "   [some.utl :as utl :refer [u2]]))\n"
+                                "   [some.utl :as utl :refer [u2]]\n"
+                                "   [clojure.edn :as e]))\n"
                                 "(defn f1 [] nil)\n"
                                 "(defn f2 [f c] (map f c) )\n"
                                 "(defn f3 [] (utl/u1))\n"
                                 "(defn f4 [] (u2))\n"
                                 "(defn f5 [] (some.utl/u3))\n")))
-  (def requires {:refers {'u1 'some.utl
-                          'u2 'some.utl
-                          'u3 'some.utl}
+  (def requires {:refers {'u1 'some.utl/u1
+                          'u2 'some.utl/u2
+                          'u3 'some.utl/u3}
                  :aliases {'utl `some.utl}}))
