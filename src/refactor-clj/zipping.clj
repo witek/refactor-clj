@@ -68,6 +68,23 @@
         (recur (z/next zipper) refs)))))
 
 
+(deftest extract-refs-test
+  (let [zipper (z/of-string (str "(ns some.core\n"
+                                 "  (:require\n"
+                                 "   [some.utl :as utl :refer [u2]]))\n"
+                                 "(defn f1 [] nil)\n"
+                                 "(defn f2 [f c] (map f c) )\n"
+                                 "(defn f3 [] (utl/u1))\n"
+                                 "(defn f4 [] (u2))\n"
+                                 "(defn f5 [] (some.utl/u3))\n"))
+        requires {:refers  {'u1 'some.utl
+                            'u2 'some.utl
+                            'u3 'some.utl}
+                  :aliases {'utl `some.utl}}]
+    (is (= #{'some.utl/u1 'some.utl/u2 'some.utl/u3}
+           (extract-refs zipper requires)))))
+
+
 (comment
   (def zipper (z/of-string "(ns some.core)(println :hello :owlrd)"))
   (def zipper (z/of-string ":just-a-keyword"))
@@ -82,4 +99,4 @@
   (def requires {:refers {'u1 'some.utl
                           'u2 'some.utl
                           'u3 'some.utl}
-                 :aliases {'utl `core.utl}}))
+                 :aliases {'utl `some.utl}}))
